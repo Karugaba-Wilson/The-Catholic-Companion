@@ -1426,10 +1426,11 @@
     <!-- NEW: Firebase SDKs -->
     <script type="module">
       // Import the functions you need from the SDKs you need
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-      import { getFirestore } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
-      import { getAuth } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+      import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+      import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
+      // --- 1. FIREBASE CONFIGURATION ---
       // Your web app's Firebase configuration
       const firebaseConfig = {
         apiKey: "AIzaSyDF0FFN6NpN2b7xeB_wmnK1hI055IdL4jU",
@@ -1440,10 +1441,48 @@
         appId: "1:58414447046:web:8a2657ac57694565561ac7"
       };
 
-      // Initialize Firebase
+      // --- 2. INITIALIZE FIREBASE & SERVICES ---
       const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app); // This is your connection to the Firestore database
-      const auth = getAuth(app);     // This is your connection to Firebase Authentication
+      const db = getFirestore(app);
+      window.auth = getAuth(app); // Make auth globally available
+
+      // --- 3. DATA FETCHING FUNCTION ---
+      async function loadTodaysReflection() {
+        // Get today's date and format it as YYYY-MM-DD
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+        const day = String(today.getDate()).padStart(2, '0');
+        const dateString = `${year}-${month}-${day}`;
+
+        try {
+            // Create a reference to the document for today
+            const docRef = doc(db, "daily_reflections", dateString);
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                // Populate the reflection section on the homepage
+                document.getElementById('reflection-home-title').textContent = data.title || "Title not found";
+                document.getElementById('reflection-text').innerHTML = `<p>${data.text || "Reflection not available."}</p>`;
+                // You can also populate other elements, like the daily verse
+                document.getElementById('daily-verse').innerHTML = `
+                    <p class="font-medium leading-normal" style="color: var(--color-text-secondary);">"${data.verse || ""}"</p>
+                    <span class="text-sm font-semibold text-emerald-600 block mt-2">— ${data.verse_citation || ""}</span>`;
+            } else {
+                // Handle the case where there's no reflection for today
+                document.getElementById('reflection-home-title').textContent = "Reflection for Today";
+                document.getElementById('reflection-text').innerHTML = "<p>Today's reflection has not been posted yet. Please check back later.</p>";
+                console.log("No reflection document found for:", dateString);
+            }
+        } catch (error) {
+            console.error("Error fetching reflection: ", error);
+            showToast("Could not load today's reflection.", "error");
+        }
+      }
+
+      // --- 4. CALL THE FUNCTION ON PAGE LOAD ---
+      window.addEventListener('load', loadTodaysReflection);
     </script>
     <!-- END NEW -->
 
@@ -3896,7 +3935,7 @@
         // Initial setup
         // UPDATED: This function is now async to wait for Firebase data
         window.onload = async function() {
-            // --- NEW: FETCH DATA FROM FIREBASE ---
+            // --- DEPRECATED: FETCH SAINTS FROM FIREBASE (Now handled in saints.js or similar) ---
             try {
                 console.log("Fetching saints from Firestore...");
                 const saintsSnapshot = await db.collection("saints").get();
